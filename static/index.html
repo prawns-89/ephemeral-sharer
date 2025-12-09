@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ephemeral Share</title>
+  <style>
+    :root {
+      --brand: #0056ff;
+      --bg: #f4f5f7;
+      --card-bg: #ffffff;
+      --text-primary: #111;
+      --text-secondary: #555;
+      --border: #dadae0;
+      --error: #e74c3c;
+      --success: #27ae60;
+      --spacing: 16px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing);
+    }
+
+    .container {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      max-width: 480px;
+      width: 100%;
+      padding: calc(var(--spacing) * 2);
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: var(--spacing);
+      font-size: 1.75rem;
+    }
+    p {
+      margin-bottom: calc(var(--spacing) * 1.5);
+      color: var(--text-secondary);
+    }
+
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: calc(var(--spacing) * 2);
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      background: #fafafa;
+    }
+    .upload-area.dragover {
+      background: #e9ebf0;
+      border-color: var(--brand);
+    }
+    .upload-area input {
+      display: none;
+    }
+    .upload-area .icon {
+      font-size: 48px;
+      color: var(--brand);
+      margin-bottom: var(--spacing);
+    }
+    .upload-area .text {
+      color: var(--text-secondary);
+    }
+
+    .btn-upload {
+      margin-top: var(--spacing);
+      background-color: var(--brand);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+    .btn-upload:disabled {
+      background: #aaa;
+      cursor: default;
+    }
+    .btn-upload:hover:not(:disabled) {
+      background: darken(var(--brand), 10%);
+    }
+
+    .status {
+      margin-top: var(--spacing);
+      font-size: 0.95rem;
+    }
+    .status.error { color: var(--error); }
+    .status.success { color: var(--success); }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: var(--spacing);
+      }
+      h1 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📤 Share a File</h1>
+    <p>Select a file or drag it here to get a secure link.</p>
+
+    <div class="upload-area" id="uploadArea">
+      <div class="icon">📁</div>
+      <div class="text">Click or drag file to upload</div>
+      <input type="file" id="fileInput" name="myFile" />
+    </div>
+
+    <button class="btn-upload" id="uploadButton" disabled>Upload Now</button>
+
+    <div class="status" id="statusMessage"></div>
+  </div>
+
+  <script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const uploadButton = document.getElementById('uploadButton');
+    const status = document.getElementById('statusMessage');
+
+    let selectedFile = null;
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+
+    ['dragenter','dragover'].forEach(evt => uploadArea.addEventListener(evt, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      uploadArea.classList.add('dragover');
+    }));
+    ['dragleave','drop'].forEach(evt => uploadArea.addEventListener(evt, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      uploadArea.classList.remove('dragover');
+    }));
+    uploadArea.addEventListener('drop', e => {
+      const files = e.dataTransfer.files;
+      if (files.length) {
+        fileInput.files = files;
+        onFileSelect(files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', e => {
+      if (e.target.files.length) {
+        onFileSelect(e.target.files[0]);
+      }
+    });
+
+    function onFileSelect(file) {
+      selectedFile = file;
+      uploadButton.disabled = false;
+      status.textContent = `📄 Selected: ${file.name}`;
+      status.className = 'status';
+    }
+
+    uploadButton.addEventListener('click', () => {
+      if (!selectedFile) return;
+
+      const formData = new FormData();
+      formData.append('myFile', selectedFile);
+
+      uploadButton.disabled = true;
+      status.textContent = 'Uploading…';
+
+      fetch('/upload', {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.link) {
+          status.innerHTML = `✅ File uploaded! <br>Link: <a href="${data.link}" target="_blank">${data.link}</a>`;
+          status.classList.add('success');
+        } else {
+          throw new Error(data.error || 'Upload failed');
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        status.textContent = '❌ ' + (err.message || 'Upload failed');
+        status.classList.add('error');
+      })
+      .finally(() => {
+        uploadButton.disabled = false;
+      });
+    });
+  </script>
+</body>
+</html>
