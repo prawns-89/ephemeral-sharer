@@ -1,0 +1,15 @@
+# Ignore the actual uploaded files/folders
+/uploads/
+/tmp/
+
+# Ignore system files
+.DS_Store
+
+# Ignore environment variables (security)
+.env
+
+# If you use Node.js later
+node_modules/
+
+# If you use Go later
+/bin/
