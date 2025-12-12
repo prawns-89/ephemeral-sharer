@@ -18,7 +18,7 @@ func main() {
 	go func() {
 		ticker := time.NewTicker(1 * time.Minute)
 		for range ticker.C {
-			fmt.Println("🧹 Pruning old files...")
+			fmt.Println("Pruning old files...")
 			store.Prune(5 * time.Minute)
 		}
 	}()
